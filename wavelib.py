@@ -3,26 +3,15 @@
 """
 Wellen-Simulation Backend (wellen_simulation.py)
 ------------------------------------------------
-Dieses Modul stellt die Kernfunktionalität zur Simulation akustischer Wellen 
-in einem 2D-Medium bereit. Es nutzt die Finite-Differenzen-Methode (FDTD) 
-auf einem versetzten Gitter (Staggered Grid) und implementiert hochwirksame 
-absorbierende Randbedingungen (Convolutional Perfectly Matched Layer - CPML).
-
-Optimierung:
-Die Ergebnisse werden Frame für Frame direkt in eine Pickle-Datei (.pkl) 
-gestreamt. Dadurch verbleibt zu keinem Zeitpunkt das gesamte 3D-Wellenfeld 
-im Arbeitsspeicher (RAM-Schutz).
+FDTD-Engine für akustische Wellen. 
+Neu: Unterstützt 2D-Dämpfungsmatrizen (z.B. verlustfreies Wasser über dämpfendem Gestein)
+und vorab berechnete Quell-Arrays (z.B. Chirps).
 """
 
 import numpy as np
 import pickle
 
 def erzeuge_cpml_koeffizienten(n, pml_punkte, d, v_max, d_t, f_dominant):
-    """
-    Berechnet die CPML-Koeffizienten (a und b) für eine Dimension.
-    Es wird strikt zwischen ganzzahligen Knoten (int) und Halbschritten (half)
-    des Staggered Grids unterschieden, um künstliche Reflexionen zu minimieren.
-    """
     R_theoretisch = 1e-6
     L = pml_punkte * d
     
@@ -69,18 +58,14 @@ def erzeuge_cpml_koeffizienten(n, pml_punkte, d, v_max, d_t, f_dominant):
     
     return a_int, b_int, a_half, b_half
 
-def ricker_wavelet(t, f_dominant):
-    """ Generiert die Quell-Amplitude (Druckimpuls) zum Zeitpunkt t. """
-    t0 = 1.2 / f_dominant  
-    tau = np.pi * f_dominant * (t - t0)
-    return (1.0 - 2.0 * tau**2) * np.exp(-tau**2)
-
-def wellen_simulieren_2d_cpml(v, t_sim_sec, d_t, d_x, d_y, pml_punkte, q_x, q_y, f_dominant, dampfung_global, speicher_schritt, pkl_filepath):
+def wellen_simulieren_2d_cpml(v, dampfung_2d, quell_signal, t_sim_sec, d_t, d_x, d_y, pml_punkte, q_x, q_y, f_dominant, speicher_schritt, pkl_filepath):
     """
-    Führt die 2D-Wellensimulation durch und streamt die Daten direkt auf die Festplatte.
+    v: 2D Geschwindigkeitsmodell
+    dampfung_2d: 2D Matrix mit Reibungskoeffizienten (Wasser=0, Fels>0)
+    quell_signal: 1D Array mit den Amplituden für jeden Zeitschritt
     """
     n_x, n_y = v.shape
-    n_t_total = int(t_sim_sec / d_t)
+    n_t_total = len(quell_signal)
     
     a_x_int, b_x_int, a_x_half, b_x_half = erzeuge_cpml_koeffizienten(n_x, pml_punkte, d_x, np.max(v), d_t, f_dominant)
     a_y_int, b_y_int, a_y_half, b_y_half = erzeuge_cpml_koeffizienten(n_y, pml_punkte, d_y, np.max(v), d_t, f_dominant)
@@ -90,7 +75,6 @@ def wellen_simulieren_2d_cpml(v, t_sim_sec, d_t, d_x, d_y, pml_punkte, q_x, q_y,
     a_y_int, b_y_int = a_y_int[np.newaxis, :], b_y_int[np.newaxis, :]
     a_y_half, b_y_half = a_y_half[np.newaxis, :], b_y_half[np.newaxis, :]
     
-    # RAM-Schutz: Es existieren immer nur drei 2D-Zeitschichten gleichzeitig im Speicher
     u = np.zeros((n_x, n_y))
     u_past = np.zeros((n_x, n_y))
     u_next = np.zeros((n_x, n_y))
@@ -100,7 +84,10 @@ def wellen_simulieren_2d_cpml(v, t_sim_sec, d_t, d_x, d_y, pml_punkte, q_x, q_y,
     psi_y = np.zeros((n_x - 2, n_y - 1))
     phi_y = np.zeros((n_x - 2, n_y - 2))
     
-    # Datei öffnen und ersten Header schreiben
+    # 2D Dämpfungs-Faktoren vorbereiten (Vermeidet Berechnungen in der Schleife)
+    dampf_term1 = 1.0 - 0.5 * dampfung_2d[1:-1, 1:-1] * d_t
+    dampf_term2 = 1.0 / (1.0 + 0.5 * dampfung_2d[1:-1, 1:-1] * d_t)
+    
     with open(pkl_filepath, 'wb') as f_pkl:
         metadata = {
             'v': v, 'd_x': d_x, 'd_y': d_y, 'd_t': d_t,
@@ -109,7 +96,7 @@ def wellen_simulieren_2d_cpml(v, t_sim_sec, d_t, d_x, d_y, pml_punkte, q_x, q_y,
         }
         pickle.dump(metadata, f_pkl)
         
-        print(f"[+] Starte Physik-Engine ({n_t_total} Schritte). Stream läuft in PKL-Datei...")
+        print(f"[+] Ozean-Simulation gestartet ({n_t_total} Schritte). Stream läuft...")
         
         frames_saved = 0
         for i in range(n_t_total - 2):
@@ -117,7 +104,7 @@ def wellen_simulieren_2d_cpml(v, t_sim_sec, d_t, d_x, d_y, pml_punkte, q_x, q_y,
                 prozent = int((i + 2) / n_t_total * 100)
                 print(f"\r    Simuliere: [{prozent:03d}%] Schritt {i+2}/{n_t_total}", end="", flush=True)
                 
-            # CPML-Berechnungen ...
+            # CPML X
             du_dx = (u[1:, 1:-1] - u[:-1, 1:-1]) / d_x
             psi_x = b_x_half * psi_x + a_x_half * du_dx
             Hx = du_dx + psi_x
@@ -125,6 +112,7 @@ def wellen_simulieren_2d_cpml(v, t_sim_sec, d_t, d_x, d_y, pml_punkte, q_x, q_y,
             phi_x = b_x_int * phi_x + a_x_int * dH_dx
             d2u_dx2_stretched = dH_dx + phi_x
             
+            # CPML Y
             du_dy = (u[1:-1, 1:] - u[1:-1, :-1]) / d_y
             psi_y = b_y_half * psi_y + a_y_half * du_dy
             Hy = du_dy + psi_y
@@ -132,25 +120,23 @@ def wellen_simulieren_2d_cpml(v, t_sim_sec, d_t, d_x, d_y, pml_punkte, q_x, q_y,
             phi_y = b_y_int * phi_y + a_y_int * dH_dy
             d2u_dy2_stretched = dH_dy + phi_y
             
+            # LAPLACE MIT 2D DÄMPFUNG
             beschleunigung = (d_t**2) * (v[1:-1, 1:-1]**2) * (d2u_dx2_stretched + d2u_dy2_stretched)
+            u_next[1:-1, 1:-1] = (2.0 * u[1:-1, 1:-1] - dampf_term1 * u_past[1:-1, 1:-1] + beschleunigung) * dampf_term2
             
-            if dampfung_global > 0.0:
-                term_past = (1.0 - 0.5 * dampfung_global * d_t) * u_past[1:-1, 1:-1]
-                u_next[1:-1, 1:-1] = (2.0 * u[1:-1, 1:-1] - term_past + beschleunigung) / (1.0 + 0.5 * dampfung_global * d_t)
-            else:
-                u_next[1:-1, 1:-1] = 2.0 * u[1:-1, 1:-1] - u_past[1:-1, 1:-1] + beschleunigung
+            # DIE PERFEKTE WASSEROBERFLÄCHE (Pressure Release Boundary)
+            # Reflektiert die Welle mit invertierter Phase exakt an der Wasseroberfläche
+            u_next[:, pml_punkte] = 0.0
             
-            zeit = i * d_t
-            if zeit <= (2.5 / f_dominant):
-                amplituden_wert = ricker_wavelet(zeit, f_dominant)
-                u_next[q_x, q_y] += amplituden_wert * (d_t**2) * (v[q_x, q_y]**2)
+            # SIGNAL EINSPEISEN
+            u_next[q_x, q_y] += quell_signal[i] * (d_t**2) * (v[q_x, q_y]**2)
             
             u_past[:, :] = u
             u[:, :] = u_next
             
-            # DIRECT-TO-DISK STREAMING (RAM-SCHUTZ)
+            # STREAM TO DISK
             if i % speicher_schritt == 0:
                 pickle.dump(u_next.astype(np.float32), f_pkl)
                 frames_saved += 1
                 
-    print(f"\n[+] Physik beendet. {frames_saved} Frames erfolgreich in PKL gestreamt.")
+    print(f"\n[+] Physik beendet. {frames_saved} Frames in PKL gestreamt.")
