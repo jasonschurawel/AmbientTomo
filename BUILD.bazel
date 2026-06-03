@@ -1,0 +1,13 @@
+package(default_visibility = ["//visibility:public"])
+
+# Dieser Build-Target erzeugt das finale Simulationsvideo
+genrule(
+    name = "render_video",
+    srcs = [
+        "simulation.py",
+        "wellen_simulation.py",
+    ],
+    outs = ["seismische_welle_simulation.mp4"],
+    cmd = "python3 $(location simulation.py) $@",
+    tags = ["local"], # Nutzt deine lokale Conda-Umgebung (Python, NumPy, FFmpeg)
+)
