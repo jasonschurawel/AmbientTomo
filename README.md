@@ -10,3 +10,5 @@ The primary goal of this project is the development of an imaging Synthetic Aper
 
 ## Integration with Bazel
 The entire system is built to be fully deterministic. Any modification to the physical forward modeling or the wave propagation parameters triggers an automatically reproducible recalculation of the simulation results. Unchanged states are loaded directly from the global build cache without requiring additional computation.
+
+(Of course it it possible to run the simulation without bazel by executing the simulation.py)

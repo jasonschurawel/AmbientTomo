@@ -1,13 +1,28 @@
+load("@rules_python//python:defs.bzl", "py_binary")
+
 package(default_visibility = ["//visibility:public"])
 
-# Dieser Build-Target erzeugt das finale Simulationsvideo
-genrule(
-    name = "render_video",
+py_binary(
+    name = "simulation_bin",
     srcs = [
         "simulation.py",
         "wavelib.py",
     ],
+    main = "simulation.py",
+    imports = ["."],  # <--- HIER! Das zwingt Bazel, wavelib im lokalen Pfad findbar zu machen
+    data = [
+        "@offline_raw_archives//:unpack_ffmpeg",
+    ],
+    deps = [
+        "@pip//numpy",
+        "@pip//matplotlib",
+    ],
+)
+
+genrule(
+    name = "render_video",
+    srcs = [],
     outs = ["seismische_welle_simulation.mp4"],
-    cmd = "python3 $(location simulation.py) $@",
-    tags = ["local"], # Nutzt deine lokale Conda-Umgebung (Python, NumPy, FFmpeg)
+    cmd = "$(location :simulation_bin) $@",
+    tools = [":simulation_bin"],
 )

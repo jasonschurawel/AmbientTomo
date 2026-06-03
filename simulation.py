@@ -18,6 +18,21 @@ import matplotlib.animation as animation
 
 from wavelib import wellen_simulieren_2d_cpml
 
+# Matplotlib anweisen, das temporäre Verzeichnis der Sandbox zu nutzen
+os.environ["MPLCONFIGDIR"] = "/tmp/matplotlib_bazel_cache"
+
+# =========================================================================
+# --- BAZEL RUNFILES & HERMETIC FFMPEG PATH RESOLUTION ---
+# =========================================================================
+
+runfiles_dir = os.environ.get("RUNFILES_DIR") or os.environ.get("PYTHON_RUNFILES")
+if runfiles_dir:
+    # Sucht das statische Linux-FFmpeg in den isolierten Runfiles von Bazel
+    hermetic_ffmpeg = os.path.join(runfiles_dir, "ffmpeg_linux", "ffmpeg")
+    if os.path.exists(hermetic_ffmpeg):
+        plt.rcParams['animation.ffmpeg_path'] = hermetic_ffmpeg
+        print(f"[Hermetic-Build] Python 3.12 nutzt sandboxed FFmpeg: {hermetic_ffmpeg}")
+
 if __name__ == "__main__":
     # Bazel übergibt den gewünschten Pfad für das Output-Video als erstes Argument ($@)
     if len(sys.argv) < 2:
