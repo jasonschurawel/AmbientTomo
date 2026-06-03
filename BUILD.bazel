@@ -5,7 +5,7 @@ genrule(
     name = "render_video",
     srcs = [
         "simulation.py",
-        "wellen_simulation.py",
+        "wavelib.py",
     ],
     outs = ["seismische_welle_simulation.mp4"],
     cmd = "python3 $(location simulation.py) $@",

@@ -16,7 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-from wellen_simulation import wellen_simulieren_2d_cpml
+from wavelib import wellen_simulieren_2d_cpml
 
 if __name__ == "__main__":
     # Bazel übergibt den gewünschten Pfad für das Output-Video als erstes Argument ($@)
