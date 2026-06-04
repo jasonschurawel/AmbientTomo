@@ -1,0 +1,10 @@
+[package]
+name = "seismic-sim"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ndarray = { version = "0.15", features = ["rayon"] }
+rayon = "1.10"
+bytemuck = "1.19"
+plotters = "0.3.7"
