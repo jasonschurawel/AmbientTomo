@@ -1,5 +1,5 @@
 # Build-Verzeichnisse
-/target/
+target/
 __pycache__/
 
 # Simulations-Rohdaten und Einzelbilder
