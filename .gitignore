@@ -1,0 +1,12 @@
+# Build-Verzeichnisse
+/target/
+__pycache__/
+
+# Simulations-Rohdaten und Einzelbilder
+temp.bin
+frame_*.png
+
+# Videos generell ignorieren...
+*.mp4
+# ...außer sie liegen im Beispielordner
+!examples/*.mp4
