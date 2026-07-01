@@ -64,3 +64,24 @@ The Rust port is designed for maximum throughput using `ndarray` and `rayon` mul
 The entire system is built to be fully deterministic. Any modification to the physical forward modeling or the wave propagation parameters triggers an automatically reproducible recalculation of the simulation results. Unchanged states are loaded directly from the global build cache without requiring additional computation.
 
 *(Of course, it is possible to run the simulation without Bazel by executing `simulation.py` directly).*
+
+## License
+
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+
+## AI Training Notice / Nutzungsvorbehalt (§ 44b UrhG)
+
+**English:**
+The copyright holder copyright reserved the use of this source code and repository 
+content for text and data mining, machine learning, and the training of artificial 
+intelligence models in accordance with Article 4(3) of the EU Digital Single Market 
+Directive (2019/790) and the EU AI Act. Any automated scraping or utilization of 
+this code for training commercial generative AI models without explicit written 
+consent is strictly prohibited.
+
+**Deutsch:**
+Der Urheberrechtinhaber behält sich die Nutzung des gesamten Quellcodes und der 
+Inhalte dieses Repositories für Text- und Data-Mining, maschinelles Lernen sowie 
+das Training von Modellen künstlicher Intelligenz gemäß § 44b Abs. 3 UrhG und dem 
+EU AI Act ausdrücklich vor. Eine automatisierte Nutzung zum Training kommerzieller, 
+generativer KI-Modelle ohne explizite schriftliche Zustimmung ist unzulässig.
